@@ -49,7 +49,7 @@ rcnt = function(f1){
     f7 = vector()
     for (k in 1:length(plist)){ #for each poster
       f3 = subset(f2, poster == plist[k])
-      f4 = subset(f3, select = c(qid, poster, datetime, status))
+MM      f4 = subset(f3, select = c(qid, poster, datetime, status))
       f4 = f4[order(f4$datetime), ] #a list of posts created by the poster 
       names(f4) = c('qid', 'poi', 'poidate', 'status')
       rownames(f4) = NULL
