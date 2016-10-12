@@ -20,6 +20,7 @@ ptdc = function(tbl){
   t = dbGetQuery(c, sql)
   return(t)
 }
+  
 #Manipulate the dataset
 rcnt = function(f1){
   for (i in 1:nrow(f1)){
