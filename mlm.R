@@ -60,7 +60,8 @@ rcnt = function(f1){
         for (l in 2:nrow(f4)){
           f6 = subset(f2, (f2$datetime < f4$poidate[l]) & (f2$datetime > f4$poidate[l-1]))
           f61 = table(factor(f6$status, levels = 2:8))
-          f51 = rbind(f51, f61)        }
+          f51 = rbind(f51, f61)        
+        }
         rownames(f51) = NULL
         colnames(f51) = seq(2, 8)
         f7 = rbind(f7, data.frame(f51, f4))
