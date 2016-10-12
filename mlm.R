@@ -29,7 +29,8 @@ rcnt = function(f1){
   f1 = f1[order(f1$qid, f1$localID, f1$datetime), ]
   if (nrow(f1) > 0 ){
     f1$status = 0
-    f1$status[f1$type == '00000'] = 1    f1$status[f1$type == '10000'] = 2
+    f1$status[f1$type == '00000'] = 1    
+    f1$status[f1$type == '10000'] = 2
     f1$status[f1$type == '01000'] = 3
     f1$status[f1$type == '00100'] = 4
     f1$status[f1$type == '00010'] = 5
