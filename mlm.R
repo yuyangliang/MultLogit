@@ -20,7 +20,6 @@ ptdc = function(tbl){
   t = dbGetQuery(c, sql)
   return(t)
 }
-
 #Manipulate the dataset
 rcnt = function(f1){
   for (i in 1:nrow(f1)){
@@ -30,8 +29,7 @@ rcnt = function(f1){
   f1 = f1[order(f1$qid, f1$localID, f1$datetime), ]
   if (nrow(f1) > 0 ){
     f1$status = 0
-    f1$status[f1$type == '00000'] = 1
-    f1$status[f1$type == '10000'] = 2
+    f1$status[f1$type == '00000'] = 1    f1$status[f1$type == '10000'] = 2
     f1$status[f1$type == '01000'] = 3
     f1$status[f1$type == '00100'] = 4
     f1$status[f1$type == '00010'] = 5
@@ -49,7 +47,7 @@ rcnt = function(f1){
     f7 = vector()
     for (k in 1:length(plist)){ #for each poster
       f3 = subset(f2, poster == plist[k])
-MM      f4 = subset(f3, select = c(qid, poster, datetime, status))
+      f4 = subset(f3, select = c(qid, poster, datetime, status))
       f4 = f4[order(f4$datetime), ] #a list of posts created by the poster 
       names(f4) = c('qid', 'poi', 'poidate', 'status')
       rownames(f4) = NULL
