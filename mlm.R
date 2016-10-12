@@ -60,8 +60,7 @@ MM      f4 = subset(f3, select = c(qid, poster, datetime, status))
         for (l in 2:nrow(f4)){
           f6 = subset(f2, (f2$datetime < f4$poidate[l]) & (f2$datetime > f4$poidate[l-1]))
           f61 = table(factor(f6$status, levels = 2:8))
-          f51 = rbind(f51, f61)
-        }
+          f51 = rbind(f51, f61)        }
         rownames(f51) = NULL
         colnames(f51) = seq(2, 8)
         f7 = rbind(f7, data.frame(f51, f4))
@@ -102,5 +101,5 @@ m = MCMCglmm(status ~ -1 + X2 + X3 + X4 + X5 + X6 + X7 + X8 + tdif + trait,
 out = summary(m)
 out.1 = matrix(nrow = 1, ncol = 16)
 out.1[1, ] = c(out$solutions[,1], out$Gcovariances[,1], out$Rcovariances[1,1])
-colnames(out.1) = c('C', 'RI', 'RE', 'PE', 'PI', 'IE', 'CE', 'TD', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'GV', 'RV')
+colnames(out.1) = c('C', 'RI', 'RE', 'PE', 'PI', 'IE', 'CE', 'TD', 'C2V1', 'C3V1', 'C4V1', 'C5V1', 'C6V1', 'C7V1', 'GV', 'RV')
 write.csv(out.1, file = 'paras.csv', row.names = F)
