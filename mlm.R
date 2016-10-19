@@ -1,13 +1,5 @@
 library('DBI')
 
-# connect to the database
-c =  dbConnect(RMySQL::MySQL(), 
-               username = 'josh', 
-               password = 'pickles5000!',
-               host = 'opendata.missouri.edu', 
-               dbname = 'WEBMD_2016'
-)
-
 flist = list.files(path = './Classification Result', pattern = '.csv')
 f = list()
 dir = './Classification Result/'
