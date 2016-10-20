@@ -31,7 +31,7 @@ rcnt = function(f1){
   f1$datetime = as.POSIXct(f1$date, format = '%m/%d/%Y %R', tz = 'EST', usetz = F)
   f1 = f1[order(f1$qid, f1$localID, f1$datetime), ]
   if (nrow(f1) > 0 ){
-    f1$status = 0
+    f1$status = f1$CM = f1$RI = f1$RE = f1$PE = f1$PI = f1$EI = f1$CE = 0
     f1$status[f1$type == '00000'] = 1
     f1$status[f1$type == '10000'] = 2
     f1$status[f1$type == '01000'] = 3
@@ -41,20 +41,29 @@ rcnt = function(f1){
     f1$status[f1$type == '00011'] = 7
     f1$status[f1$type == '10010'] = 8
     
+    f1$CM[f1$type == '10000'] = 1
+    f1$RI[f1$type == '01000'] = 1
+    f1$RE[f1$type == '00100'] = 1
+    f1$PE[f1$type == '00010'] = 1
+    f1$PI[f1$type == '00001'] = 1
+    f1$EI[f1$type == '00011'] = 1
+    f1$CE[f1$type == '10010'] = 1
+    
     f1 = subset(f1, status > 1) #categorize the posts
     
     t = ptdc(f1$forum[1])
-    f2 = subset(merge(f1, t, by = 'uniqueID'), select = c(uniqueID, qid, localID, poster, datetime, forum, inferred_replies, status))
+    f2 = subset(merge(f1, t, by = 'uniqueID'), select = c(uniqueID, qid, localID, poster, datetime, forum, inferred_replies, status,
+                                                          CM, RI, RE, PE, PI, EI, CE))
     f2 = f2[order(f2$datetime), ]
     
     plist = unique(f1$poster) #a list of unique posters
     f7 = vector()
     for (k in 1:length(plist)){ #for each poster
       f3 = subset(f2, poster == plist[k])
-      f4 = subset(f3, select = c(qid, poster, datetime, status))
+      f4 = subset(f3, select = c(qid, poster, datetime, status, CM, RI, RE, PE, PI, EI, CE))
       f4 = f4[order(f4$datetime), ] #a list of posts created by the poster 
       
-      names(f4) = c('qid', 'poi', 'poidate', 'status')
+      names(f4) = c('qid', 'poi', 'poidate', 'status', 'CM', 'RI', 'RE', 'PE', 'PI', 'EI', 'CE')
       rownames(f4) = NULL
       if (nrow(f4) > 1){#for each post, obtain a list of posts from the whole forum that came before the post
         #f4$tdif = c(0, log(as.numeric(f4$poidate[2:nrow(f4)]) - as.numeric(f4$poidate[1:(nrow(f4)-1)]) + 1))
@@ -85,29 +94,46 @@ for (i in 1:length(flist)){
 
 cnth = rcnt(f[[1]])
 
-library('MCMCglmm')
-
-#the multinomial model
-
-k = length(levels(cnth$status))
-I = diag(k-1) 
-J = matrix(rep(1, (k-1)^2), c(k-1, k-1))
-priors = list(R = list(fix=1, V=(1/k) * (I + J), n = k - 1), G = list(G1 = list(V = diag(k - 1), n = k - 1))) 
-priors = list(R = list(fix=1, V=(1/k) * (I + J), n = k - 1), G = list(G1 = list(V = k, n = k - 1))) 
-
-m = MCMCglmm(status ~ -1 + X2 + X3 + X4 + X5 + X6 + X7 + X8 + tdif + trait,
-             random = ~idh(trait):poi,
-             rcov = ~idh(trait):units,
-             prior = priors,
-             family = "categorical",
-             data = cnth)
-
-#output the parameters
-out = summary(m)
-out.1 = matrix(nrow = 1, ncol = 16)
-out.1[1, ] = c(out$solutions[,1], out$Gcovariances[,1], out$Rcovariances[1,1])
-colnames(out.1) = c('C', 'RI', 'RE', 'PE', 'PI', 'IE', 'CE', 'TD', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'GV', 'RV')
-write.csv(out.1, file = 'paras.csv', row.names = F)
-
 t = aggregate(c(cnth[,1:7]), list(cnth$poi, cnth$month), sum)
-t = reshape(data.frame(cnth[, 8:11], value = 1), idvar = c('poi', 'poidate', 'qid'), timevar = 'status', direction = 'wide')
+u = aggregate(c(cnth[,12:18]), list(cnth$poi, cnth$month), sum)
+v = merge(t, u, by = c('Group.1', 'Group.2'))
+v$tot = apply(v[, 10:16], 1, sum)
+
+adlst = rbind(subset(crlst, corpus == 'add_and_adhd_exchange'), subset(frlst, corpus == 'add_and_adhd_exchange'))
+v = merge(v, adlst, by.x = 'Group.1', by.y = 'person')
+v$class[v$class == 'F'] = 0
+v$class[v$class == 'C'] = 1
+
+names(v)[names(v) == 'Group.1'] = 'person'
+v$person = as.factor(v$person)
+v$class = as.factor(v$class)
+
+library(glmmADMB)
+m = glmmadmb(tot ~ X2 + X3 + X4 + X5 + X6 + X7 + X8 + class + (1|person), data = v, family = 'nbinom1', mcmc = T)
+plot(fitted(m), residuals(m, type="pearson")) 
+lines(smooth.spline(fitted(m), residuals(m, type="pearson")))  
+m = glmmadmb(CM ~ X2 + X3 + X4 + X5 + X6 + X7 + X8 + class + (1|person), data = v, family = 'nbinom1')
+
+# #the multinomial model
+# 
+# library('MCMCglmm')
+# 
+# k = length(levels(cnth$status))
+# I = diag(k-1) 
+# J = matrix(rep(1, (k-1)^2), c(k-1, k-1))
+# priors = list(R = list(fix=1, V=(1/k) * (I + J), n = k - 1), G = list(G1 = list(V = diag(k - 1), n = k - 1))) 
+# priors = list(R = list(fix=1, V=(1/k) * (I + J), n = k - 1), G = list(G1 = list(V = k, n = k - 1))) 
+# 
+# m = MCMCglmm(status ~ -1 + X2 + X3 + X4 + X5 + X6 + X7 + X8 + tdif + trait,
+#              random = ~idh(trait):poi,
+#              rcov = ~idh(trait):units,
+#              prior = priors,
+#              family = "categorical",
+#              data = cnth)
+# 
+# #output the parameters
+# out = summary(m)
+# out.1 = matrix(nrow = 1, ncol = 16)
+# out.1[1, ] = c(out$solutions[,1], out$Gcovariances[,1], out$Rcovariances[1,1])
+# colnames(out.1) = c('C', 'RI', 'RE', 'PE', 'PI', 'IE', 'CE', 'TD', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'GV', 'RV')
+# write.csv(out.1, file = 'paras.csv', row.names = F)
