@@ -1,5 +1,6 @@
 source('xperi.R')
 source('crpr.R')
+library('caret')
 
 cfexp = data.frame()
 for (i in 1:length(flist)){
@@ -15,22 +16,34 @@ for (i in 1:length(flist)){
 
 cfexp$class1 = as.numeric(cfexp$class) - 1
 
+cfexp.all = cfexp
+cfexp = subset(cfexp.all, forum == 'diabetes_exchange' )
+
+tmp = cfexp[!duplicated(cfexp$person), ]
+tmp1 = createFolds(tmp$class, k = 5)
+tmp$fold = 0
+
+for (i in 1:5) tmp$fold[tmp1[[i]]] = i
+cfexp = merge(cfexp, tmp[, c(1, 20)], by = 'person')
+
 library('MCMCglmm')
 m.cf = list()
-m.cf[[1]] = MCMCglmm(CM ~ ECM + ERI + ERE + EPE + EPI + EEI + ECE + class1 - 1, random = ~person + forum, 
-                  data = cfexp, family = 'poisson', prior = prior)
-m.cf[[2]] = MCMCglmm(RI ~ ECM + ERI + ERE + EPE + EPI + EEI + ECE + class1 - 1, random = ~person + forum, 
-                  data = cfexp, family = 'poisson', prior = prior)
-m.cf[[3]] = MCMCglmm(RE ~ ECM + ERI + ERE + EPE + EPI + EEI + ECE + class1 - 1, random = ~person + forum, 
-                  data = cfexp, family = 'poisson', prior = prior)
-m.cf[[4]] = MCMCglmm(PE ~ ECM + ERI + ERE + EPE + EPI + EEI + ECE + class1 - 1, random = ~person + forum, 
-                  data = cfexp, family = 'poisson', prior = prior)
-m.cf[[5]] = MCMCglmm(PI ~ ECM + ERI + ERE + EPE + EPI + EEI + ECE + class1 - 1, random = ~person + forum, 
-                  data = cfexp, family = 'poisson', prior = prior)
-m.cf[[6]] = MCMCglmm(EI ~ ECM + ERI + ERE + EPE + EPI + EEI + ECE + class1 - 1, random = ~person + forum, 
-                  data = cfexp, family = 'poisson', prior = prior)
-m.cf[[7]] = MCMCglmm(CE ~ ECM + ERI + ERE + EPE + EPI + EEI + ECE + class1 - 1, random = ~person + forum, 
-                  data = cfexp, family = 'poisson', prior = prior)
+prior = list(R = list(V = diag(1), nu = 0.002), G = list(G1 = list(V = diag(1), nu = 0.002)))
+
+m.cf[[1]] = MCMCglmm(CM ~ ECM + ERI + ERE + EPE + EPI + EEI + ECE + class1 - 1, random = ~person, 
+                  data = cfexp, family = 'poisson', prior = prior, pr = T)
+m.cf[[2]] = MCMCglmm(RI ~ ECM + ERI + ERE + EPE + EPI + EEI + ECE + class1 - 1, random = ~person, 
+                  data = cfexp, family = 'poisson', prior = prior, pr = T)
+m.cf[[3]] = MCMCglmm(RE ~ ECM + ERI + ERE + EPE + EPI + EEI + ECE + class1 - 1, random = ~person, 
+                  data = cfexp, family = 'poisson', prior = prior, pr = T)
+m.cf[[4]] = MCMCglmm(PE ~ ECM + ERI + ERE + EPE + EPI + EEI + ECE + class1 - 1, random = ~person, 
+                  data = cfexp, family = 'poisson', prior = prior, pr = T)
+m.cf[[5]] = MCMCglmm(PI ~ ECM + ERI + ERE + EPE + EPI + EEI + ECE + class1 - 1, random = ~person, 
+                  data = cfexp, family = 'poisson', prior = prior, pr = T)
+m.cf[[6]] = MCMCglmm(EI ~ ECM + ERI + ERE + EPE + EPI + EEI + ECE + class1 - 1, random = ~person, 
+                  data = cfexp, family = 'poisson', prior = prior, pr = T)
+m.cf[[7]] = MCMCglmm(CE ~ ECM + ERI + ERE + EPE + EPI + EEI + ECE + class1 - 1, random = ~person, 
+                  data = cfexp, family = 'poisson', prior = prior, pr = T)
 
 #output the parameters
 
@@ -44,11 +57,16 @@ write.csv(out, file = 'paras.csv', row.names = F)
 
 com = vector()
 for (i in 1:7){
-  tmp = rbind(summary(cfexp[,(9+i)]), summary(as.vector(floor(exp(predict(m[[i]], type = 'terms'))))))
+  tmp = rbind(summary(cfexp[,(9+i)]), summary(simulate.MCMCglmm(m.cf[[i]], type = 'terms')))
   com = rbind(com, tmp)  
 }
 
+write.csv(com, file = 'sim.csv', row.names = F)
+
 xpexp$tot = apply(xpexp[, 3:9], 1, sum)
+xpexp.all = xpexp
+xpexp = subset(xpexp.all, forum == 'diabetes_exchange' )
+
 prior1 = list(R = list(V = diag(1), nu = 0.002))
 m.xp = list()
 m.xp[[1]] = glm(RI ~ ERI + ERE + EPE + EPI + EEI, data = xpexp, family = 'poisson')
@@ -64,3 +82,13 @@ for (i in 1:4){
   out[i, ] = c(tmp$coefficients[,1])
 }
 write.csv(out, file = 'paras1.csv', row.names = F)
+
+com1 = vector()
+for (i in 1:4){
+  tmp = rbind(summary(xpexp[,(10+i)]), summary(simulate(m.xp[[i]])$sim_1))
+  com1 = rbind(com1, tmp)  
+}
+write.csv(com1, file = 'sim1.csv', row.names = F)
+
+tmp2 = as.matrix(xpexp[, 4:8])
+tmp3 = rpois(16959, exp(tmp2 %*% out[1, 2:6] + out[1, 1]))
